@@ -1,12 +1,23 @@
-let balance = 1000;
+// Загружаем сохранённый баланс и инвентарь
+let balance = Number(localStorage.getItem('flox_bal'));
+if (!localStorage.getItem('flox_bal')) balance = 1000;
+
+let myInventory = new Array();
+try {
+  const savedInv = JSON.parse(localStorage.getItem('flox_inv'));
+  if (savedInv) myInventory = savedInv;
+} catch {}
+
 let isSpinning = false;
 let bonusTimer = null;
+let selectedCase = 'mid';
 
 const tape = document.getElementById('tape');
 const openBtn = document.getElementById('open-btn');
 const bonusBtn = document.getElementById('bonus-btn');
+const contractBtn = document.getElementById('contract-btn');
 
-// Рисуем пушки на холсте
+// Генератор скинов на холсте
 function makeSkinImage(type, c1, c2) {
   const c = document.createElement('canvas');
   c.width = 160;
@@ -47,6 +58,9 @@ function makeSkinImage(type, c1, c2) {
     g.moveTo(20, 55); g.quadraticCurveTo(60, 42, 85, 45);
     g.lineTo(145, 25); g.quadraticCurveTo(135, 52, 85, 56);
     g.lineTo(25, 68);
+  } else if (type === 'karambit') {
+    g.moveTo(25, 45); g.quadraticCurveTo(65, 20, 130, 35);
+    g.quadraticCurveTo(95, 55, 55, 55); g.arc(25, 55, 12, 0, Math.PI * 2);
   }
   g.closePath();
   g.fill();
@@ -90,34 +104,111 @@ function playWin(isRare) {
   });
 }
 
-const skins = new Array(
-  { name: 'P250 | Песчаная буря', img: makeSkinImage('pistol', '#d6c096', '#8c734b'), rarity: 'blue', price: 40, chance: 45 },
-  { name: 'MP9 | Утечка', img: makeSkinImage('smg', '#3b82f6', '#1e3a8a'), rarity: 'blue', price: 60, chance: 30 },
-  { name: 'AK-47 | Снежный вихрь', img: makeSkinImage('rifle', '#38bdf8', '#a855f7'), rarity: 'purple', price: 220, chance: 15 },
-  { name: 'M4A4 | Темукау', img: makeSkinImage('rifle', '#ec4899', '#f472b6'), rarity: 'pink', price: 650, chance: 6 },
-  { name: 'AWP | Азимов', img: makeSkinImage('awp', '#f97316', '#ffffff'), rarity: 'red', price: 1800, chance: 3 },
-  { name: '★ Нож-бабочка | Градиент', img: makeSkinImage('knife', '#eab308', '#ec4899'), rarity: 'gold', price: 9500, chance: 1 }
-);
+// База из 3 кейсов
+const casesData = {
+  cheap: {
+    name: 'Кейс «Новичок»',
+    price: 100,
+    skins: new Array(
+      { name: 'Glock-18 | Жернов', type: 'pistol', c1: '#64748b', c2: '#334155', rarity: 'blue', price: 25, chance: 55 },
+      { name: 'MAC-10 | Карамель', type: 'smg', c1: '#f59e0b', c2: '#b45309', rarity: 'blue', price: 40, chance: 30 },
+      { name: 'FAMAS | Механо-пушка', type: 'rifle', c1: '#e2e8f0', c2: '#ef4444', rarity: 'purple', price: 140, chance: 11 },
+      { name: 'AWP | Горячечные грёзы', type: 'awp', c1: '#ec4899', c2: '#3b82f6', rarity: 'pink', price: 420, chance: 3 },
+      { name: '★ Тычковые ножи', type: 'knife', c1: '#eab308', c2: '#f97316', rarity: 'gold', price: 2500, chance: 1 }
+    )
+  },
+  mid: {
+    name: 'Кейс «Революция»',
+    price: 250,
+    skins: new Array(
+      { name: 'P250 | Песчаная буря', type: 'pistol', c1: '#d6c096', c2: '#8c734b', rarity: 'blue', price: 40, chance: 45 },
+      { name: 'MP9 | Утечка', type: 'smg', c1: '#3b82f6', c2: '#1e3a8a', rarity: 'blue', price: 60, chance: 30 },
+      { name: 'AK-47 | Снежный вихрь', type: 'rifle', c1: '#38bdf8', c2: '#a855f7', rarity: 'purple', price: 220, chance: 15 },
+      { name: 'M4A4 | Темукау', type: 'rifle', c1: '#ec4899', c2: '#f472b6', rarity: 'pink', price: 650, chance: 6 },
+      { name: 'AWP | Азимов', type: 'awp', c1: '#f97316', c2: '#ffffff', rarity: 'red', price: 1800, chance: 3 },
+      { name: '★ Нож-бабочка | Градиент', type: 'knife', c1: '#eab308', c2: '#ec4899', rarity: 'gold', price: 9500, chance: 1 }
+    )
+  },
+  vip: {
+    name: 'Кейс «Элитный»',
+    price: 1000,
+    skins: new Array(
+      { name: 'Desert Eagle | Пламя', type: 'pistol', c1: '#f97316', c2: '#dc2626', rarity: 'purple', price: 550, chance: 45 },
+      { name: 'AK-47 | Вулкан', type: 'rifle', c1: '#0284c7', c2: '#f8fafc', rarity: 'pink', price: 1200, chance: 30 },
+      { name: 'M4A1-S | Поток информации', type: 'rifle', c1: '#f8fafc', c2: '#a855f7', rarity: 'red', price: 2800, chance: 15 },
+      { name: '★ Керамбит | Волны', type: 'karambit', c1: '#eab308', c2: '#06b6d4', rarity: 'gold', price: 18500, chance: 10 }
+    )
+  }
+};
+
+// Переключение вкладок кейсов
+function selectCase(key) {
+  if (isSpinning) return;
+  selectedCase = key;
+  document.querySelectorAll('.case-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + key).classList.add('active');
+  const c = casesData[key];
+  document.getElementById('current-case-name').innerText = c.name;
+  openBtn.innerText = `Открыть кейс (${c.price} ₽)`;
+}
+
+document.getElementById('tab-cheap').addEventListener('click', () => selectCase('cheap'));
+document.getElementById('tab-mid').addEventListener('click', () => selectCase('mid'));
+document.getElementById('tab-vip').addEventListener('click', () => selectCase('vip'));
+
+// Сохранение и отрисовка инвентаря
+function saveProgress() {
+  localStorage.setItem('flox_bal', balance);
+  localStorage.setItem('flox_inv', JSON.stringify(myInventory));
+  document.getElementById('bal').innerText = balance;
+}
+
+function renderInventory() {
+  const inv = document.getElementById('inv');
+  inv.innerHTML = '';
+
+  let blueCount = 0;
+  myInventory.forEach((skin, index) => {
+    if (skin.rarity === 'blue') blueCount++;
+    const card = document.createElement('div');
+    card.className = `inv-item ${skin.rarity}`;
+    const imgUrl = makeSkinImage(skin.type, skin.c1, skin.c2);
+    card.innerHTML = `<img src="${imgUrl}"><br><b>${skin.name}</b><br><span style="color:#4ade80;">Продать: ${skin.price} ₽</span>`;
+    card.addEventListener('click', () => {
+      playWin(false);
+      balance += skin.price;
+      myInventory.splice(index, 1);
+      saveProgress();
+      renderInventory();
+    });
+    inv.appendChild(card);
+  });
+
+  contractBtn.innerText = `⚗️ Контракт (${blueCount}/5 синих)`;
+}
 
 function getRandomSkin() {
+  const list = casesData[selectedCase].skins;
   const rand = Math.random() * 100;
   let sum = 0;
-  for (const s of skins) {
+  for (const s of list) {
     sum += s.chance;
     if (rand <= sum) return s;
   }
-  return skins.at(0);
+  return list.at(0);
 }
 
+// Открытие кейса
 openBtn.addEventListener('click', () => {
   if (isSpinning) return;
-  if (balance < 250) {
+  const currentCase = casesData[selectedCase];
+  if (balance < currentCase.price) {
     alert('Не хватает монет! Продай скины или подожди бонус.');
     return;
   }
 
-  balance -= 250;
-  document.getElementById('bal').innerText = balance;
+  balance -= currentCase.price;
+  saveProgress();
   isSpinning = true;
   openBtn.disabled = true;
 
@@ -125,11 +216,12 @@ openBtn.addEventListener('click', () => {
   tape.style.transform = 'translateX(0px)';
   tape.innerHTML = '';
 
-  let wonSkin = skins.at(0);
+  let wonSkin = currentCase.skins.at(0);
   for (let i = 0; i < 40; i++) {
     const s = getRandomSkin();
     if (i === 35) wonSkin = s;
-    tape.innerHTML += `<div class="item ${s.rarity}"><img src="${s.img}"><div>${s.name}</div></div>`;
+    const imgUrl = makeSkinImage(s.type, s.c1, s.c2);
+    tape.innerHTML += `<div class="item ${s.rarity}"><img src="${imgUrl}"><div>${s.name}</div></div>`;
   }
 
   let lastTick = -1;
@@ -153,41 +245,55 @@ openBtn.addEventListener('click', () => {
     isSpinning = false;
     openBtn.disabled = false;
     playWin(wonSkin.rarity === 'gold' || wonSkin.rarity === 'red');
-    addToInv(wonSkin);
+    myInventory.unshift(wonSkin);
+    saveProgress();
+    renderInventory();
   }, 3900);
 });
 
-function addToInv(skin) {
-  const inv = document.getElementById('inv');
-  const card = document.createElement('div');
-  card.className = `inv-item ${skin.rarity}`;
-  card.innerHTML = `<img src="${skin.img}"><br><b>${skin.name}</b><br><span style="color:#4ade80;">Продать: ${skin.price} ₽</span>`;
-  card.addEventListener('click', () => {
-    playWin(false);
-    balance += skin.price;
-    document.getElementById('bal').innerText = balance;
-    card.remove();
-  });
-  inv.prepend(card);
-}
-
-bonusBtn.addEventListener('click', () => {
-  if (bonusBtn.disabled) return;
-  balance += 500;
-  document.getElementById('bal').innerText = balance;
-
-  let sec = 30;
-  bonusBtn.disabled = true;
-  bonusBtn.innerText = `Бонус через ${sec}с`;
-
-  bonusTimer = setInterval(() => {
-    sec--;
-    if (sec <= 0) {
-      clearInterval(bonusTimer);
-      bonusBtn.disabled = false;
-      bonusBtn.innerText = '+ 500 ₽ (Бонус)';
-    } else {
-      bonusBtn.innerText = `Бонус через ${sec}с`;
+// Контракт обмена: 5 синих -> 1 фиолетовый
+contractBtn.addEventListener('click', () => {
+  const blueIndexes = new Array();
+  myInventory.forEach((item, idx) => {
+    if (item.rarity === 'blue' && blueIndexes.length < 5) {
+      blueIndexes.push(idx);
     }
-  }, 1000);
+  });
+
+  if (blueIndexes.length < 5) {
+    alert(`Для контракта нужно 5 синих скинов! Сейчас у тебя: ${blueIndexes.length} из 5.`);
+    return;
+  }
+
+// Удаляем 5 синих скинов с конца, чтобы не сбить индексы
+blueIndexes.reverse().forEach(idx => myInventory.splice(idx, 1));
+// Выдаём фиолетовый скин
+const reward = { name: 'AK-47 | Снежный вихрь', type: 'rifle', c1: '#38bdf8', c2: '#a855f7', rarity: 'purple', price: 240 };
+myInventory.unshift(reward);
+playWin(true);
+saveProgress();
+renderInventory();
+alert('⚗️ Контракт выполнен! Ты скрафтил: AK-47 | Снежный вихрь!');
 });
+// Бонус с таймером
+bonusBtn.addEventListener('click', () => {
+if (bonusBtn.disabled) return;
+balance += 500;
+saveProgress();
+let sec = 30;
+bonusBtn.disabled = true;
+bonusBtn.innerText = Бонус через ${sec}с;
+bonusTimer = setInterval(() => {
+sec--;
+if (sec <= 0) {
+clearInterval(bonusTimer);
+bonusBtn.disabled = false;
+bonusBtn.innerText = '+ 500 ₽ (Бонус)';
+} else {
+bonusBtn.innerText = Бонус через ${sec}с;
+}
+}, 1000);
+});
+// Запуск при открытии страницы
+saveProgress();
+renderInventory();
