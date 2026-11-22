@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Flox — Кейс-симулятор</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; user-select: none; }
+    .header { display: flex; justify-content: space-between; align-items: center; max-width: 700px; margin: 0 auto 20px; background: #1e293b; padding: 15px 25px; border-radius: 12px; border: 1px solid #334155; }
+    .brand { font-size: 20px; font-weight: bold; color: #38bdf8; }
+    .balance { font-size: 22px; font-weight: bold; color: #4ade80; }
+    .roulette-box { position: relative; width: 680px; height: 150px; margin: 0 auto 20px; background: #1e293b; border: 3px solid #f59e0b; border-radius: 12px; overflow: hidden; }
+    .pointer { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; background: #ef4444; z-index: 10; }
+    .tape { display: flex; height: 100%; align-items: center; }
+    .item { min-width: 135px; height: 130px; margin: 0 5px; border-radius: 8px; background: #0f172a; display: flex; flex-direction: column; justify-content: center; align-items: center; border-bottom: 5px solid gray; font-size: 11px; font-weight: bold; }
+    .item img { width: 105px; height: 65px; object-fit: contain; margin-bottom: 6px; }
+    .blue { border-color: #3b82f6; }
+    .purple { border-color: #a855f7; }
+    .pink { border-color: #ec4899; }
+    .red { border-color: #ef4444; }
+    .gold { border-color: #eab308; background: #29220a; }
+    .btn { padding: 14px 28px; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; background: #f59e0b; color: #000; }
+    .btn:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+    .bonus-btn { background: #2563eb; color: white; margin-left: 10px; }
+    .inventory { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 720px; margin: 15px auto; }
+    .inv-item { width: 135px; background: #1e293b; padding: 10px; border-radius: 8px; border-bottom: 4px solid gray; font-size: 11px; cursor: pointer; }
+    .inv-item img { width: 95px; height: 55px; object-fit: contain; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div><span class="brand">⚡ Flox</span> &nbsp;|&nbsp; Кейс «Революция» (250 ₽)</div>
+    <div class="balance">Баланс: <span id="bal">1000</span> ₽</div>
+  </div>
+
+  <div class="roulette-box">
+    <div class="pointer"></div>
+    <div class="tape" id="tape"></div>
+  </div>
+
+  <button class="btn" id="open-btn">Открыть кейс (250 ₽)</button>
+  <button class="btn bonus-btn" id="bonus-btn">+ 500 ₽ (Бонус)</button>
+
+  <h3 style="color:#94a3b8;margin-top:25px;">Твой инвентарь (кликни, чтобы продать):</h3>
+  <div class="inventory" id="inv"></div>
+
+  <script src="game.js"></script>
+</body>
+</html>
